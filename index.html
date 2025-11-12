@@ -1,132 +1,61 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>CJ Test Store — Client-only</title>
-  <style>
-    body { font-family: system-ui, Arial; margin: 20px; background:#0f1724; color:#e6eef8; }
-    .card { background:#0b1220; padding:16px; border-radius:8px; box-shadow: 0 6px 18px rgba(0,0,0,0.6); max-width:950px; margin:auto;}
-    input, button, select { padding:8px; margin:6px 0; border-radius:6px; border:1px solid #233; background:#071125; color:#e6eef8; width:100%;}
-    .grid { display:grid; grid-template-columns: repeat(auto-fill,minmax(220px,1fr)); gap:12px; margin-top:12px; }
-    .product { background:#081026; padding:10px; border-radius:8px; text-align:center; }
-    img { max-width:100%; height:140px; object-fit:cover; border-radius:6px; }
-    small { color:#9fb0cf; }
-    pre { white-space:pre-wrap; background:#041023; padding:8px; border-radius:6px; overflow:auto; max-height:200px;}
-    .warn { color:#ffd0d0; font-weight:600; }
-  </style>
+  <meta charset="UTF-8">
+  <title>CJ Dropshipping Store Test</title>
 </head>
 <body>
-  <div class="card">
-    <h2>CJ Dropshipping — quick product fetch</h2>
-    <p>Paste your CJ API token (or auth value) below and press <strong>Fetch products</strong>.</p>
+  <h1>CJ Dropshipping Products</h1>
+  <input type="text" id="token" placeholder="Enter CJ Access Token" style="width: 300px;">
+  <input type="email" id="email" placeholder="Enter CJ Email" style="width: 300px;">
+  <button id="fetchBtn">Fetch Products</button>
 
-    <label>API Token / Key (paste here)</label>
-    <input id="token" placeholder="paste API token / access token / apiKey" />
-
-    <label>Endpoint (leave default)</label>
-    <input id="endpoint" value="https://developers.cjdropshipping.com/api2.0/v1/product/getProductList" />
-
-    <label>Query params (e.g. page=1&amp;size=20)</label>
-    <input id="params" value="page=1&size=20" />
-
-    <label>Header name for token (common ones: Authorization, accessToken, apiKey)</label>
-    <input id="headerName" value="accessToken" />
-
-    <div style="display:flex; gap:8px;">
-      <button id="fetchBtn">Fetch products</button>
-      <button id="clearBtn" type="button">Clear</button>
-    </div>
-
-    <p class="warn">Warning:</p>
-    <ul>
-      <li class="warn">Using this file directly in the browser may expose your key to the page and is only safe locally.</li>
-      <li class="warn">If you get a CORS error in the console, use the Node proxy below.</li>
-    </ul>
-
-    <div id="out"></div>
-    <h3>Raw response (debug)</h3>
-    <pre id="raw"></pre>
-    <hr/>
-    <p><strong>Recommended:</strong> use the small Node proxy (instructions below) to avoid CORS and keep your key safe.</p>
-  </div>
+  <div id="products" style="margin-top: 20px;"></div>
 
   <script>
-    const out = document.getElementById('out');
-    const raw = document.getElementById('raw');
     document.getElementById('fetchBtn').addEventListener('click', async () => {
-      out.innerHTML = 'Loading…';
-      raw.textContent = '';
-      const token = document.getElementById('token').value.trim();
-      const endpoint = document.getElementById('endpoint').value.trim();
-      const params = document.getElementById('params').value.trim();
-      const headerName = document.getElementById('headerName').value.trim() || 'accessToken';
+      const token = document.getElementById('token').value;
+      const email = document.getElementById('email').value;
 
-      if (!token) {
-        out.innerHTML = '<div style="color:#ffd0d0">Paste your token first.</div>';
+      if (!token || !email) {
+        alert('Please enter both token and email');
         return;
       }
 
-      const url = endpoint + (params ? ('?' + params) : '');
+      const productsDiv = document.getElementById('products');
+      productsDiv.innerHTML = 'Loading...';
+
       try {
-        const headers = {};
-        headers[headerName] = token;
-        // Some doc variations use Authorization: Bearer <token>
-        if (headerName.toLowerCase() === 'authorization' && !token.toLowerCase().startsWith('bearer')) {
-          headers[headerName] = 'Bearer ' + token;
-        }
-
-        const r = await fetch(url, { method: 'GET', headers });
-        const js = await r.json().catch(()=>({ok:false, text:'non-json response'}));
-        raw.textContent = JSON.stringify({status: r.status, body: js}, null, 2);
-
-        if (!r.ok) {
-          out.innerHTML = '<div style="color:#ffd0d0">Request failed — see raw response below (possible CORS or invalid key)</div>';
-          return;
-        }
-
-        // try to locate product array in common fields
-        const list = js.data || js.result || js.products || js.list || js;
-        if (!list || (Array.isArray(list) && list.length === 0)) {
-          out.innerHTML = '<div>No products found or response structure unexpected. Check the raw response.</div>';
-          return;
-        }
-
-        const items = Array.isArray(list) ? list : (list.items || list.rows || []);
-        const arr = Array.isArray(items) ? items : (Array.isArray(list) ? list : []);
-        if (!arr.length) {
-          // try deeper search
-          const maybe = [].concat(js.data && js.data.list || [], js.result && js.result.list || [], []);
-          if (maybe.length) arr.push(...maybe);
-        }
-        if (!arr.length) {
-          out.innerHTML = '<div>Received response but could not find a product array. Check raw output.</div>';
-          return;
-        }
-
-        out.innerHTML = '';
-        const grid = document.createElement('div'); grid.className = 'grid';
-        arr.forEach(p => {
-          const el = document.createElement('div'); el.className = 'product';
-          const img = document.createElement('img');
-          const imgUrl = p.image || (p.imageUrl) || (p.images && p.images[0]) || (p.mainImage) || '';
-          img.src = imgUrl || 'https://via.placeholder.com/300x200?text=No+Image';
-          const name = document.createElement('div'); name.innerHTML = '<strong>' + (p.productName || p.name || p.title || 'Unnamed') + '</strong>';
-          const price = document.createElement('div'); price.innerHTML = '<small>' + (p.price || p.salePrice || p.cjPrice || '') + '</small>';
-          el.appendChild(img); el.appendChild(name); el.appendChild(price);
-          grid.appendChild(el);
+        const response = await fetch('/api/products', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, email })
         });
-        out.appendChild(grid);
+
+        const data = await response.json();
+
+        if (data.error) {
+          productsDiv.innerHTML = 'Error: ' + data.error;
+          return;
+        }
+
+        if (!data.list || data.list.length === 0) {
+          productsDiv.innerHTML = 'No products found';
+          return;
+        }
+
+        // Display products
+        productsDiv.innerHTML = data.list.map(p => `
+          <div style="border:1px solid #ccc; padding:10px; margin:10px;">
+            <h3>${p.productName}</h3>
+            <img src="${p.imageList?.[0]}" width="150">
+            <p>Price: $${p.price}</p>
+          </div>
+        `).join('');
 
       } catch (err) {
-        raw.textContent = String(err);
-        out.innerHTML = '<div style="color:#ffd0d0">Network or CORS error. Use the Node proxy below (recommended).</div>';
+        productsDiv.innerHTML = 'Fetch failed: ' + err.message;
       }
-    });
-
-    document.getElementById('clearBtn').addEventListener('click', () => {
-      document.getElementById('token').value = '';
-      document.getElementById('raw').textContent = '';
-      document.getElementById('out').innerHTML = '';
     });
   </script>
 </body>
