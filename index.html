@@ -2,59 +2,60 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>CJ Dropshipping Store Test</title>
+  <title>CJ Dropshipping Products Viewer</title>
 </head>
 <body>
-  <h1>CJ Dropshipping Products</h1>
-  <input type="text" id="token" placeholder="Enter CJ Access Token" style="width: 300px;">
-  <input type="email" id="email" placeholder="Enter CJ Email" style="width: 300px;">
+  <h1>Fetch CJ Products</h1>
+  <input type="text" id="token" placeholder="Enter CJ Access Token" style="width:300px;"><br>
+  <input type="email" id="email" placeholder="Enter CJ Email" style="width:300px;"><br>
   <button id="fetchBtn">Fetch Products</button>
 
-  <div id="products" style="margin-top: 20px;"></div>
+  <div id="products" style="margin-top:20px;"></div>
+  <div id="error" style="color:red;"></div>
 
   <script>
     document.getElementById('fetchBtn').addEventListener('click', async () => {
-      const token = document.getElementById('token').value;
-      const email = document.getElementById('email').value;
+      const token = document.getElementById('token').value.trim();
+      const email = document.getElementById('email').value.trim();
 
       if (!token || !email) {
-        alert('Please enter both token and email');
+        document.getElementById('error').textContent = 'Please enter both token and email.';
         return;
       }
-
-      const productsDiv = document.getElementById('products');
-      productsDiv.innerHTML = 'Loading...';
+      document.getElementById('error').textContent = '';
+      document.getElementById('products').innerHTML = 'Loading…';
 
       try {
-        const response = await fetch('/api/products', {
+        const resp = await fetch('/api/products', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token, email })
+          body: JSON.stringify({ token, email, pageNum: 1, pageSize: 10 })
         });
-
-        const data = await response.json();
+        const data = await resp.json();
 
         if (data.error) {
-          productsDiv.innerHTML = 'Error: ' + data.error;
+          document.getElementById('products').innerHTML = '';
+          document.getElementById('error').textContent = data.error + (data.details ? ' – see console for details' : '');
+          console.log('CJ API details:', data.details || data.raw);
           return;
         }
 
-        if (!data.list || data.list.length === 0) {
-          productsDiv.innerHTML = 'No products found';
+        const products = data.products;
+        if (!products || products.length === 0) {
+          document.getElementById('products').innerHTML = 'No products found.';
           return;
         }
 
-        // Display products
-        productsDiv.innerHTML = data.list.map(p => `
+        document.getElementById('products').innerHTML = products.map(p => `
           <div style="border:1px solid #ccc; padding:10px; margin:10px;">
-            <h3>${p.productName}</h3>
-            <img src="${p.imageList?.[0]}" width="150">
-            <p>Price: $${p.price}</p>
-          </div>
-        `).join('');
+            <h3>${p.productName || p.productNameEn || p.title}</h3>
+            <img src="${p.mainImage || (p.images && p.images[0]) || ''}" width="150" alt="Product image">
+            <p>Price: ${p.price || p.skuPrice || ''}</p>
+          </div>`).join('');
 
       } catch (err) {
-        productsDiv.innerHTML = 'Fetch failed: ' + err.message;
+        document.getElementById('error').textContent = 'Fetch failed: ' + err.message;
+        document.getElementById('products').innerHTML = '';
       }
     });
   </script>
