@@ -13,14 +13,12 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Token and email are required' });
     }
 
-    // Adjust this endpoint based on latest docs
     const endpoint = 'https://developers.cjdropshipping.com/api2.0/v1/product/list';
 
     const body = {
       pageNum,
       pageSize,
-      email,       // include if required
-      // other parameters if docs require
+      email
     };
 
     const response = await fetch(endpoint, {
@@ -33,15 +31,16 @@ export default async function handler(req, res) {
     });
 
     const text = await response.text();
+
     let json;
     try {
       json = JSON.parse(text);
-    } catch (err) {
+    } catch (parseErr) {
       return res.status(500).json({ error: 'Invalid JSON from CJ API', raw: text });
     }
 
-    // Example success check: maybe json.code === 200
-    if (!(json.code === 200 || json.result === true)) {
+    // Check for success
+    if (!(response.status === 200 && (json.code === 200 || json.result === true))) {
       return res.status(400).json({ error: 'CJ API returned failure', details: json });
     }
 
