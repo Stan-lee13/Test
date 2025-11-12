@@ -2,27 +2,30 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>CJ Dropshipping Product Test</title>
+  <title>CJ Dropshipping Products</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #111; color: #eee; }
+    input, button { padding:8px; margin:4px; }
+    .product { display:inline-block; margin:10px; padding:10px; background:#222; border-radius:6px; width:200px; vertical-align:top; }
+    .product img { width:100%; height: auto; border-radius:4px; }
+    .error { color: #f66; }
+  </style>
 </head>
 <body>
   <h1>Fetch CJ Products</h1>
-  <input type="text" id="token" placeholder="Enter CJ Access Token" style="width:300px;"><br>
-  <input type="email" id="email" placeholder="Enter CJ Email" style="width:300px;"><br>
+  <input type="text" id="token" placeholder="Enter CJ Access Token" style="width:300px;"><br/>
   <button id="fetchBtn">Fetch Products</button>
 
-  <div id="error" style="color:red;"></div>
+  <div id="error" class="error"></div>
   <div id="products" style="margin-top:20px;"></div>
 
   <script>
     document.getElementById('fetchBtn').addEventListener('click', async () => {
       const token = document.getElementById('token').value.trim();
-      const email = document.getElementById('email').value.trim();
-
-      if (!token || !email) {
-        document.getElementById('error').textContent = 'Enter both token and email.';
+      if (!token) {
+        document.getElementById('error').textContent = 'Token required';
         return;
       }
-
       document.getElementById('error').textContent = '';
       document.getElementById('products').innerHTML = 'Loading…';
 
@@ -30,28 +33,28 @@
         const resp = await fetch('/api/products', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token, email, pageNum:1, pageSize:10 })
+          body: JSON.stringify({ token, pageNum:1, pageSize:12 })
         });
         const data = await resp.json();
 
         if (data.error) {
           document.getElementById('products').innerHTML = '';
           document.getElementById('error').textContent = data.error;
-          console.log('Details:', data.details || data.raw);
+          console.log('details:', data.details || data.raw);
           return;
         }
 
         const products = data.products;
         if (!products || products.length === 0) {
-          document.getElementById('products').innerHTML = 'No products found.';
+          document.getElementById('products').innerHTML = 'No products found';
           return;
         }
 
         document.getElementById('products').innerHTML = products.map(p => `
-          <div style="border:1px solid #ccc; padding:10px; margin:10px;">
-            <h3>${p.productName || p.name || 'Unnamed'}</h3>
-            <img src="${p.mainImage || (p.imageList && p.imageList[0]) || ''}" width="150" alt="Image">
-            <p>Price: ${p.price || ''}</p>
+          <div class="product">
+            <img src="${p.productImage || p.bigImage || ''}" alt="${p.productNameEn || p.productName || 'Product'}">
+            <h3 style="font-size:16px;">${p.productNameEn || p.productName || 'Unnamed'}</h3>
+            <p>Price: ${p.sellPrice != null ? '$' + p.sellPrice : ''}</p>
           </div>
         `).join('');
 
