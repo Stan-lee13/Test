@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>CJ Dropshipping Products Viewer</title>
+  <title>CJ Dropshipping Product Test</title>
 </head>
 <body>
   <h1>Fetch CJ Products</h1>
@@ -10,8 +10,8 @@
   <input type="email" id="email" placeholder="Enter CJ Email" style="width:300px;"><br>
   <button id="fetchBtn">Fetch Products</button>
 
-  <div id="products" style="margin-top:20px;"></div>
   <div id="error" style="color:red;"></div>
+  <div id="products" style="margin-top:20px;"></div>
 
   <script>
     document.getElementById('fetchBtn').addEventListener('click', async () => {
@@ -19,9 +19,10 @@
       const email = document.getElementById('email').value.trim();
 
       if (!token || !email) {
-        document.getElementById('error').textContent = 'Please enter both token and email.';
+        document.getElementById('error').textContent = 'Enter both token and email.';
         return;
       }
+
       document.getElementById('error').textContent = '';
       document.getElementById('products').innerHTML = 'Loading…';
 
@@ -29,14 +30,14 @@
         const resp = await fetch('/api/products', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token, email, pageNum: 1, pageSize: 10 })
+          body: JSON.stringify({ token, email, pageNum:1, pageSize:10 })
         });
         const data = await resp.json();
 
         if (data.error) {
           document.getElementById('products').innerHTML = '';
-          document.getElementById('error').textContent = data.error + (data.details ? ' – see console for details' : '');
-          console.log('CJ API details:', data.details || data.raw);
+          document.getElementById('error').textContent = data.error;
+          console.log('Details:', data.details || data.raw);
           return;
         }
 
@@ -48,10 +49,11 @@
 
         document.getElementById('products').innerHTML = products.map(p => `
           <div style="border:1px solid #ccc; padding:10px; margin:10px;">
-            <h3>${p.productName || p.productNameEn || p.title}</h3>
-            <img src="${p.mainImage || (p.images && p.images[0]) || ''}" width="150" alt="Product image">
-            <p>Price: ${p.price || p.skuPrice || ''}</p>
-          </div>`).join('');
+            <h3>${p.productName || p.name || 'Unnamed'}</h3>
+            <img src="${p.mainImage || (p.imageList && p.imageList[0]) || ''}" width="150" alt="Image">
+            <p>Price: ${p.price || ''}</p>
+          </div>
+        `).join('');
 
       } catch (err) {
         document.getElementById('error').textContent = 'Fetch failed: ' + err.message;
