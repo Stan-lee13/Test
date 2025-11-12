@@ -7,27 +7,44 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { token, email } = req.body;
+    const { token, email, pageNum = 1, pageSize = 20 } = req.body;
 
     if (!token || !email) {
       return res.status(400).json({ error: 'Token and email are required' });
     }
 
-    // CJ API endpoint
-    const endpoint = 'https://developers.cjdropshipping.com/api2.0/v1/product/getProductList?page=1&size=10';
+    // Make sure you replace endpoint with the correct one
+    const endpoint = `https://developers.cjdropshipping.com/api2.0/v1/product/list?pageNum=${pageNum}&pageSize=${pageSize}`;
 
     const response = await fetch(endpoint, {
       method: 'GET',
       headers: {
-        accessToken: token,
-        email: email
+        'CJ-Access-Token': token,
+        // Note: The docs do *not* always require email header – often it's the token only
+        // If CJ requires email header, you may need to add a header like 'email': email
       }
     });
 
-    const data = await response.json();
+    const text = await response.text();
+    let json;
+    try {
+      json = JSON.parse(text);
+    } catch (parseErr) {
+      return res.status(500).json({ error: 'Invalid JSON from CJ API', raw: text });
+    }
 
-    res.status(response.ok ? 200 : 500).json(data);
+    // Check CJ response structure
+    if (json.result !== true) {
+      // CJ says there's an error
+      return res.status(400).json({ error: json.message || 'CJ returned error', details: json });
+    }
+
+    // data should contain product list
+    const products = json.data || [];
+
+    return res.status(200).json({ products });
+
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 }
